@@ -5,7 +5,8 @@
   "main": "dist/background.js",
   "scripts": {
     "build": "node esbuild.config.mjs",
-    "package": "npm run build && cd dist && zip -r teams-pwa-enhancements.zip *"
+    "package": "npm run build && cd dist && zip -r teams-pwa-enhancements.zip *",
+    "release": "node build-release.mjs"
   },
   "author": "Richard Zille",
   "license": "ISC",
