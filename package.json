@@ -1,0 +1,19 @@
+{
+  "name": "teams-pwa-enhancements",
+  "version": "1.0.0",
+  "description": "Chrome extension to enhance Microsoft Teams PWA functionality with automatic activity maintenance and persistent notifications",
+  "main": "dist/background.js",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "package": "npm run build && cd dist && zip -r teams-pwa-enhancements.zip *"
+  },
+  "author": "Richard Zille",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.0.305",
+    "@types/node": "^22.13.4",
+    "esbuild": "^0.25.0",
+    "prettier": "^3.5.1",
+    "typescript": "^5.7.3"
+  }
+}

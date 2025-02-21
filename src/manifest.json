@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Teams PWA Enhancements",
+  "version": "1.0",
+  "description": "Enhance Microsoft Teams PWA functionality with automatic activity maintenance and persistent notifications",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "assets/teams.png",
+    "128": "assets/teams.png"
+  },
+  "permissions": ["alarms", "idle", "notifications", "scripting", "tabs"],
+  "host_permissions": ["https://*.teams.microsoft.com/*"]
+}
