@@ -10,7 +10,7 @@ type NotificationPayload = {
   options: NotificationOptions;
 };
 
-export const initializeNotificationManager = async () => {
+export const initializeTeamsNotificationManager = async () => {
   const tabs = await getTeamsTabs();
   tabs.forEach(injectNotificationInterceptor);
 

@@ -1,5 +1,5 @@
 import { initializeTeamsActivity } from './managers/activity';
-import { initializeNotificationManager } from './managers/notification';
+import { initializeTeamsNotificationManager } from './managers/notification';
 
 initializeTeamsActivity();
-initializeNotificationManager();
+initializeTeamsNotificationManager();
