@@ -46,30 +46,32 @@ const injectNotificationListener = (): void => {
 
   const coreServices = teamsApp._reactRootContainer.current.updateQueue.baseState.element.props.coreServices;
 
-  const notificationsHandler = coreServices.notificationsHandler;
+  const originalTryShowBrowserNotification = coreServices.notificationsHandler.showBrowserNotification;
+  coreServices.notificationsHandler.tryShowBrowserNotification = function (event: any) {
+    try {
+      const webToastOptions = event.getWebToastOptions();
+      const { notificationTitle, notificationOptions } = event.getNotificationOptionsPayload();
+      const persistentOptions = { ...notificationOptions, requireInteraction: true, silent: false };
+      console.log({ notificationTitle, notificationOptions, persistentOptions });
 
-  const originalTryShowBrowserNotification = notificationsHandler.tryShowBrowserNotification;
-  coreServices.notificationsHandler.tryShowBrowserNotification = (...args: unknown[]) => {
-    console.log('tryShowBrowserNotification:', args);
-    return originalTryShowBrowserNotification(...args);
-  };
+      const getNotification = () => {
+        const notification = new Notification(notificationTitle, persistentOptions);
 
-  const originalActivateNotification = notificationsHandler.activateNotification;
-  coreServices.notificationsHandler.activateNotification = (...args: unknown[]) => {
-    console.log('activateNotification:', args);
-    return originalActivateNotification(...args);
-  };
+        notification.addEventListener('click', async () => {
+          console.log('Injected notification clicked');
+          await this.activateBrowserToast(webToastOptions);
+        });
 
-  const originalCreateNotificationsWindow = notificationsHandler.createNotificationsWindow;
-  coreServices.notificationsHandler.createNotificationsWindow = (...args: unknown[]) => {
-    console.log('createNotificationsWindow:', args);
-    return originalCreateNotificationsWindow(...args);
-  };
+        return notification;
+      };
 
-  const originalEventHandler = coreServices.eventHandler;
-  coreServices.eventHandler = (...args: unknown[]) => {
-    console.log('eventHandler:', args);
-    return originalEventHandler(...args);
+      event.registerGetNotificationCallback(getNotification);
+
+      return Promise.resolve('queued');
+    } catch (error) {
+      console.error('Failed to show injected browser notification:', error);
+      return originalTryShowBrowserNotification.call(this, event);
+    }
   };
 
   console.log('Injected notification listener');
