@@ -1,7 +1,7 @@
-import { getTeamsTabs, isTeamsTab } from '../helpers/tab';
+import { isTeamsTab } from '../helpers/tab';
 
 interface TeamsWindow extends Window {
-  _injectedNotificationListener?: boolean;
+  _teamsNotificationManagerInitialized?: boolean;
 }
 
 interface TeamsAppElement extends HTMLElement {
@@ -9,10 +9,19 @@ interface TeamsAppElement extends HTMLElement {
 }
 
 export const initializeTeamsNotificationManager = async () => {
-  const tabs = await getTeamsTabs();
-  tabs.forEach(setupNotificationListener);
+  try {
+    setupTabListeners();
+  } catch (error) {
+    console.error('Failed to initialize Teams notification manager:', error);
+  }
+};
 
-  setupTabListeners();
+const setupTabListeners = () => {
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (isTeamsTab(tab) && changeInfo.status === 'complete') {
+      setupNotificationListener(tab);
+    }
+  });
 };
 
 const setupNotificationListener = (tab: chrome.tabs.Tab): void => {
@@ -25,25 +34,8 @@ const setupNotificationListener = (tab: chrome.tabs.Tab): void => {
   });
 };
 
-const setupTabListeners = () => {
-  chrome.tabs.onCreated.addListener((tab) => {
-    if (isTeamsTab(tab)) {
-      setupNotificationListener(tab);
-    }
-  });
-
-  chrome.tabs.onUpdated.addListener((_tabId, _changeInfo, tab) => {
-    if (isTeamsTab(tab)) {
-      setupNotificationListener(tab);
-    }
-  });
-};
-
 const injectNotificationListener = (): void => {
-  if ((window as TeamsWindow)._injectedNotificationListener) {
-    console.log('Notification listener already injected, skipping');
-    return;
-  }
+  if ((window as TeamsWindow)._teamsNotificationManagerInitialized) return;
 
   const teamsApp = document.getElementById('app') as TeamsAppElement;
 
@@ -81,5 +73,5 @@ const injectNotificationListener = (): void => {
   };
 
   console.log('Injected notification listener');
-  (window as TeamsWindow)._injectedNotificationListener = true;
+  (window as TeamsWindow)._teamsNotificationManagerInitialized = true;
 };

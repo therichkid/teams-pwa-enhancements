@@ -1,5 +1,5 @@
 const TEAMS_URL_PATTERN = 'https://*.teams.microsoft.com/*';
-const TEAMS_URL_REGEX = /^https:\/\/[^\/]*\.teams\.microsoft\.com\/.*/;
+const TEAMS_URL_REGEX = /^https:\/\/(.*\.)?teams\.microsoft\.com(\/.*)?$/;
 
 export const getTeamsTabs = () => {
   return chrome.tabs.query({ url: TEAMS_URL_PATTERN });
