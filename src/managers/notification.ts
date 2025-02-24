@@ -1,97 +1,85 @@
 import { getTeamsTabs, isTeamsTab } from '../helpers/tab';
 
-type NotificationMessage = {
-  type: string;
-  payload: NotificationPayload;
-};
+interface TeamsWindow extends Window {
+  _injectedNotificationListener?: boolean;
+}
 
-type NotificationPayload = {
-  title: string;
-  options: NotificationOptions;
-};
+interface TeamsAppElement extends HTMLElement {
+  _reactRootContainer?: any;
+}
 
 export const initializeTeamsNotificationManager = async () => {
   const tabs = await getTeamsTabs();
-  tabs.forEach(injectNotificationInterceptor);
+  tabs.forEach(setupNotificationListener);
 
   setupTabListeners();
-  setupNotificationListeners();
 };
 
-const injectNotificationInterceptor = (tab: chrome.tabs.Tab): void => {
+const setupNotificationListener = (tab: chrome.tabs.Tab): void => {
   if (!tab.id) return;
 
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: setupNotificationOverride,
+    func: injectNotificationListener,
+    world: 'MAIN',
   });
 };
 
 const setupTabListeners = () => {
   chrome.tabs.onCreated.addListener((tab) => {
     if (isTeamsTab(tab)) {
-      injectNotificationInterceptor(tab);
+      setupNotificationListener(tab);
     }
   });
 
   chrome.tabs.onUpdated.addListener((_tabId, _changeInfo, tab) => {
     if (isTeamsTab(tab)) {
-      injectNotificationInterceptor(tab);
+      setupNotificationListener(tab);
     }
   });
 };
 
-const setupNotificationListeners = (): void => {
-  chrome.runtime.onMessage.addListener(handleMessage);
-  chrome.notifications.onClicked.addListener(handleNotificationClick);
-};
-
-const setupNotificationOverride = (): void => {
-  if (window.hasOwnProperty('_teamsNotificationOverrideInstalled')) {
+const injectNotificationListener = (): void => {
+  if ((window as TeamsWindow)._injectedNotificationListener) {
+    console.log('Notification listener already injected, skipping');
     return;
   }
 
-  const originalNotification = window.Notification;
+  const teamsApp = document.getElementById('app') as TeamsAppElement;
 
-  // @ts-ignore
-  window.Notification = function (title: string, options: NotificationOptions) {
-    console.log('Intercepting Teams notification:', title, options);
+  if (!teamsApp || !teamsApp._reactRootContainer) {
+    console.log('React root container not found, skipping injection of notification listener');
+    return;
+  }
 
-    chrome.runtime.sendMessage({
-      type: 'TEAMS_NOTIFICATION',
-      payload: { title, options },
-    });
+  const coreServices = teamsApp._reactRootContainer.current.updateQueue.baseState.element.props.coreServices;
 
-    return new originalNotification(title, { ...options, silent: true });
+  const notificationsHandler = coreServices.notificationsHandler;
+
+  const originalTryShowBrowserNotification = notificationsHandler.tryShowBrowserNotification;
+  coreServices.notificationsHandler.tryShowBrowserNotification = (...args: unknown[]) => {
+    console.log('tryShowBrowserNotification:', args);
+    return originalTryShowBrowserNotification(...args);
   };
 
-  // @ts-ignore
-  window.Notification.permission = originalNotification.permission;
-  window.Notification.requestPermission = originalNotification.requestPermission;
+  const originalActivateNotification = notificationsHandler.activateNotification;
+  coreServices.notificationsHandler.activateNotification = (...args: unknown[]) => {
+    console.log('activateNotification:', args);
+    return originalActivateNotification(...args);
+  };
 
-  Object.defineProperty(window, '_teamsNotificationOverrideInstalled', {
-    value: true,
-    configurable: false,
-    writable: false,
-  });
-};
+  const originalCreateNotificationsWindow = notificationsHandler.createNotificationsWindow;
+  coreServices.notificationsHandler.createNotificationsWindow = (...args: unknown[]) => {
+    console.log('createNotificationsWindow:', args);
+    return originalCreateNotificationsWindow(...args);
+  };
 
-const handleNotificationClick = async (): Promise<void> => {
-  const tabs = await getTeamsTabs();
-  const firstTab = tabs[0];
+  const originalEventHandler = coreServices.eventHandler;
+  coreServices.eventHandler = (...args: unknown[]) => {
+    console.log('eventHandler:', args);
+    return originalEventHandler(...args);
+  };
 
-  if (firstTab && firstTab.id) {
-    await Promise.all([chrome.tabs.update(firstTab.id, { active: true }), chrome.windows.update(firstTab.windowId, { focused: true })]);
-  }
-};
-
-const handleMessage = (message: NotificationMessage): void => {
-  if (message.type === 'TEAMS_NOTIFICATION') {
-    chrome.notifications.create(`teams-notification-${Date.now()}`, {
-      type: 'basic',
-      title: message.payload.title,
-      message: message.payload.options.body ?? '',
-      iconUrl: message.payload.options.icon ?? 'assets/teams.png',
-    });
-  }
+  console.log('Injected notification listener');
+  (window as TeamsWindow)._injectedNotificationListener = true;
 };
