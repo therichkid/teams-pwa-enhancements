@@ -11,29 +11,52 @@ export const initializeTeamsNotificationManager = async () => {
 const setupTabListeners = () => {
   chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
     if (isTeamsTab(tab) && changeInfo.status === 'complete') {
-      setupNotificationCloseOverride(tab);
+      setupNotificationOverrides(tab);
     }
   });
 };
 
-const setupNotificationCloseOverride = (tab: chrome.tabs.Tab): void => {
+const setupNotificationOverrides = (tab: chrome.tabs.Tab): void => {
   if (!tab.id) return;
 
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: overrideNotificationClose,
+    func: overrideNotificationBehavior,
     world: 'MAIN',
   });
 };
 
-const overrideNotificationClose = (): void => {
+const overrideNotificationBehavior = (): void => {
   const isOverridden = () => {
-    const descriptor = Object.getOwnPropertyDescriptor(Notification.prototype, 'close');
-    return descriptor && !descriptor.writable && !descriptor.configurable;
+    // Check if Notification constructor is proxied
+    const constructorDescriptor = Object.getOwnPropertyDescriptor(window, 'Notification');
+    const isConstructorOverridden = constructorDescriptor && constructorDescriptor.value !== Notification;
+
+    // Check if close method is overridden
+    const closeDescriptor = Object.getOwnPropertyDescriptor(Notification.prototype, 'close');
+    const isCloseOverridden = closeDescriptor && !closeDescriptor.writable && !closeDescriptor.configurable;
+
+    return isCloseOverridden && isConstructorOverridden;
   };
 
   if (isOverridden()) return;
 
+  // Create proxy to intercept notification creation
+  const NotificationProxy = new Proxy(window.Notification, {
+    construct(target, args: [string, NotificationOptions?]) {
+      const [title, options = {}] = args;
+      options.requireInteraction = false;
+      return new target(title, options);
+    },
+  });
+
+  Object.defineProperty(window, 'Notification', {
+    value: NotificationProxy,
+    writable: false,
+    configurable: false,
+  });
+
+  // Override the close method
   Object.defineProperty(Notification.prototype, 'close', {
     value: function () {
       return undefined;
@@ -42,5 +65,5 @@ const overrideNotificationClose = (): void => {
     configurable: false,
   });
 
-  console.log('Notification close method overridden');
+  console.log('Notification behavior overridden: forced non-interaction and disabled close method');
 };
