@@ -36,14 +36,15 @@ try {
   await writeFile(keyPath, privateKeyPem);
 }
 
+const packageJson = JSON.parse(await readFile('./package.json'));
+const version = packageJson.version;
+
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+manifest.version = version;
 manifest.key = getPublicKeyForManifest(privateKeyPem);
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
 await crx.load('./dist');
-
-const packageJson = JSON.parse(await readFile('./package.json'));
-const version = packageJson.version;
 
 const packed = await crx.pack();
 await writeFile(join(releaseDir, `teams-pwa-enhancements-v${version}.crx`), packed);
