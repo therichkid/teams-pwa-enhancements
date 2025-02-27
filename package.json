@@ -5,17 +5,17 @@
   "main": "dist/background.js",
   "scripts": {
     "build": "node esbuild.config.mjs",
-    "package": "npm run build && cd dist && zip -r teams-pwa-enhancements.zip *",
+    "package": "pnpm run build && cd dist && zip -r teams-pwa-enhancements.zip *",
     "release": "node build-release.mjs"
   },
   "author": "Richard Zille",
   "license": "ISC",
   "devDependencies": {
     "@types/chrome": "^0.0.305",
-    "@types/node": "^22.13.4",
+    "@types/node": "^22.13.5",
     "crx": "^5.0.1",
     "esbuild": "^0.25.0",
-    "prettier": "^3.5.1",
+    "prettier": "^3.5.2",
     "typescript": "^5.7.3"
   }
 }

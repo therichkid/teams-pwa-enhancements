@@ -16,7 +16,7 @@ const getPublicKeyForManifest = (privateKeyPem) => {
 
 console.log('Building extension...');
 
-execSync('npm version patch && npm run build', { stdio: 'inherit' });
+execSync('pnpm version patch && pnpm run build', { stdio: 'inherit' });
 
 try {
   await access(releaseDir);
