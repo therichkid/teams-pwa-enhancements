@@ -1,12 +1,27 @@
 import { execSync } from 'child_process';
 import ChromeExtension from 'crx';
-import { createPrivateKey, createPublicKey } from 'crypto';
+import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'crypto';
 import { access, mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 const releaseDir = 'releases';
 const keyPath = join(releaseDir, 'private.pem');
 const manifestPath = './dist/manifest.json';
+
+const generatePrivateKey = () => {
+  const { privateKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+      type: 'spki',
+      format: 'pem',
+    },
+    privateKeyEncoding: {
+      type: 'pkcs8',
+      format: 'pem',
+    },
+  });
+  return privateKey;
+};
 
 const getPublicKeyForManifest = (privateKeyPem) => {
   const privateKey = createPrivateKey(privateKeyPem);
@@ -30,11 +45,12 @@ let privateKeyPem;
 try {
   await access(keyPath);
   privateKeyPem = await readFile(keyPath, 'utf8');
-  crx.privateKey = Buffer.from(privateKeyPem);
 } catch {
-  privateKeyPem = (await crx.generateKey()).toString();
+  privateKeyPem = generatePrivateKey();
   await writeFile(keyPath, privateKeyPem);
 }
+
+crx.privateKey = Buffer.from(privateKeyPem);
 
 const packageJson = JSON.parse(await readFile('./package.json'));
 const version = packageJson.version;
