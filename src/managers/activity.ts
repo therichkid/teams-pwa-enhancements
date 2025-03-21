@@ -28,7 +28,7 @@ const setupActivityCheck = () => {
 
 const checkAndUpdateActivity = () => {
   chrome.idle.queryState(IDLE_THRESHOLD_MINUTES * 60, (state) => {
-    if (state === 'active') {
+    if (state !== 'locked') {
       updateTeamsActivity();
     }
   });
